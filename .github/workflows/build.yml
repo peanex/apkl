@@ -1,0 +1,244 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+和……一起:
+          gradle-version: 8.7
+
+      - 姓名: Generate project files
+跑: |
+          mkdir -p proj proj/app proj/app/src/main proj/app/src/main/java/com/example/adskipper proj/app/src/main/res/values proj/app/src/main/res/xml
+          cat > proj/settings.gradle.kts <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "AdSkipper"
+          include(":app")
+EOF
+          cat > proj/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application") version "8.5.2" apply false
+              id("org.jetbrains.kotlin.android") version "1.9.24" apply false
+          }
+EOF
+          cat > proj/gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2g
+EOF
+          cat > proj/app/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+          }
+
+          android {
+              namespace = "com.example.adskipper"
+              compileSdk = 34
+
+              defaultConfig {
+                  applicationId = "com.example.adskipper"
+                  minSdk = 24
+                  targetSdk = 34
+                  versionCode = 1
+                  versionName = "1.0"
+              }
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+EOF
+          cat > proj/app/src/main/AndroidManifest.xml <<'EOF'
+没有任何的"1.0"编码="utf-8"？>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <application
+                  android:allowBackup="真"
+                  android:label="关广告"
+                  android:theme="@android:style/Theme.Material.Light.DarkActionBar">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="真">
+<intent-filter>
+<action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+</intent-filter>
+                  </activity>
+
+                  <service
+                      android:name=".AdSkipService"
+                      android:exported="false"
+Android：标签="关广告"
+Android：权限="android.permission.BIND_ACCESSIBILITY_SERVICE">
+<intent-filter>
+<action android:name="android.accessibilityservice.AccessibilityService" />
+</intent-filter>
+<元数据
+Android：名称="android.accessibility服务"
+Android:resource="@xml/accessibility_service_config" />
+</service>
+
+</application>
+</manifest>
+EOF
+cat>proj/app/src/main/java/com/example/adskipper/AdSkipService。KT<<'EOF'
+package com.example.adskipper
+
+进口安卓。AccessibilityService.AccessibilityService
+进口安卓。AccessibilityService.GestureDescription
+导入android.graphics.路径
+导入Android.graphics.Rect 的文件
+导入android.view.accessibility.AccessibilityEvent
+进口安卓。观点。可访问性。AccessibilityNodeInfo
+
+AdSkipService类 : AccessibilityService(){
+
+              // 要匹配的"跳过"类按钮文字,可自行增删
+专用val关键字=listOf("跳过", "跳過", "关闭广告", "Skip")
+
+              // 不处理的包名(自己、系统界面、输入法等)
+privateval ignoredPackages=setOf("com.android.systemui", "com.example.adskipper")
+
+              // 只在"页面切换后"的短时间内查找,避免误点 App 正常界面里的"跳过"
+专用val扫描WindowsMs=5000L
+私有var windowChangedAt=0L
+private var lastClickAt=0L
+
+override fun onAccessibilityEvent(事件: accessibilityEvent？){
+活动？: 返回
+val pkg=event.packageName？.toString()？: 返回
+if(pkg in ignoredPackages)返回
+
+Val now=System.currentTimeMillis()
+if(event.eventType==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED){
+窗口ChangedAt=now 在此位置
+                  }
+if(现在-windowChangedAt>scanWindowMs)返回
+if(now-lastClickAt<800)返回
+
+Val root=rootInActiveWindow？: 返回
+for(关键字中的单词){
+Val节点=根。findAccessibilityNodeInfosByText(word)
+for(节点中的节点){
+Val text=节点。文本？。toString()？：节点。ContentDescription？。toString()？：继续
+                          // 文字很短才认为是"跳过按钮",如"跳过"、"跳过 3s"
+如果(text.length>8)继续
+if(单击节点(节点)){
+lastClickAt=now
+返回
+                          }
+                      }
+                  }
+              }
+
+私人娱乐点击节点(节点: AccessibilityNodeInfo): 布尔型{
+                  // 1. 向上找到可点击的节点并点击
+var cur: AccessibilityNodeInfo？=节点
+var深度=0
+while(cur！=null&&depth<5){
+if(当前isClickable&&cur.performAction(AccessibilityNodeInfo.action_CLICK){
+返回true
+                      }
+cur=cur.parent
+深度++
+                  }
+                  // 2. 兜底:在按钮中心位置模拟一次手势点击
+val rect=Rect()
+node.getBoundsInScreen(rect)
+if(rect.isEmpty)返回false
+val path=Path().apply{moveto(rect.exactCenterX(),rect.exactCenterY())}
+Val STEAT=手势描述.Builder()
+。addStroke(手势描述.StrokeDescription(路径, 0, 50))
+.build()
+返回调度手势(手势,无效的,无效的)
+              }
+
+override fun onInterrupt(){}
+          }
+欧洲财政部
+cat>proj/app/src/main/java/com/example/adskipper/MainActivity。KT<<'EOF'
+package com.example.adskipper
+
+导入android.app.Activity
+导入android.content.intent 导入android.content.intent 导入android.intent
+导入android.os.Bundle
+导入android.provider.Settings 提供
+导入android.widget.Button 在线下载
+导入android.widget.LinearLayout
+导入android.widget.TextView 导入android.widget.TextView 导入android.widget.TextView 导入android.widget.TextView
+
+类MainActivity:Activity(){
+override fun onCreate(savedInstanceState:Bundle？){
+super.onCreate(savedInstanceState)
+
+Val提示=TextView(this)。应用{
+文本="关广告\n\n1. 点下方按钮进入无障碍设置\n2. 找到「关广告」并开启\n3. 之后打开其他 App 时,会自动点击开屏广告的「跳过」按钮"
+textSize=16f
+                  }
+Val btn=按钮(此)。应用{
+文本="去开启无障碍服务"
+setOnClickListener{
+startActivity(目的(设置.action_ACCESSILITY_SETTINGS))
+                      }
+                  }
+
+setContentView(LinearLayout(this).apply{
+方向=线性布局.垂直
+setPadding(48，96，48，48)
+addView(提示)
+addView(btn)
+                  })
+              }
+          }
+欧洲财政部
+cat>proj/app/src/main/res/xml/accessibility_service_config.xml<<作/上载工件@v4
+没有任何的"1.0"编码="utf-8"？>
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+姓名"typeWindowStateChanged|typeWindowContentChanged"
+Android:accessibilityFeedbackType="feedbackGeneric"
+Android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
+Android:canPerformGestures="真"
+没有任何的道."真"
+Android:description="@string/service_desc"
+时间过去了
+欧洲财政部
+cat>proj/app/src/main/res/values/strings.xml<<'EOF'
+没有任何的"1.0"编码="utf-8"？>
+<资源>
+<字符串名称="service_desc">自动点击开屏广告上的“跳过”按钮。仅读取屏幕上的按钮文字，不收集或上传任何数据。</string>
+</resources>
+欧洲财政部
+
+      - 姓名: 构建调试安装包
+工作目录: p跑
+跑: 编辑器的编辑器辑器的编辑器
+
+uses uses: 操作/上载工件@v4和……一起
+和……一起:
+姓名：AdSkipper-apk
+路径：proj/app/build/outputs/apk/debug/app-debug.APK
